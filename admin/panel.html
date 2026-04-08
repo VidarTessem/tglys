@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tglys — Traffic Light Volume Control</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --accent: #0f3460;
+    --text: #e0e0e0;
+    --muted: #888;
+    --red: #e63946;
+    --yellow: #f4a261;
+    --green: #2a9d8f;
+    --unknown: #888;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 0.25rem; letter-spacing: 1px; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 520px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .card h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 1rem; }
+
+  /* Traffic light indicator */
+  .light-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .bulb {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: #333;
+    transition: background 0.4s, box-shadow 0.4s;
+    flex-shrink: 0;
+  }
+  .bulb.red    { background: var(--red);    box-shadow: 0 0 24px var(--red); }
+  .bulb.yellow { background: var(--yellow); box-shadow: 0 0 24px var(--yellow); }
+  .bulb.green  { background: var(--green);  box-shadow: 0 0 24px var(--green); }
+
+  .state-info { display: flex; flex-direction: column; gap: 0.25rem; }
+  .state-label { font-size: 1.4rem; font-weight: 700; text-transform: capitalize; }
+  .state-error { color: var(--red); font-size: 0.82rem; word-break: break-all; }
+
+  /* Form */
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.3rem; margin-top: 0.9rem; }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"], input[type="url"], input[type="number"] {
+    width: 100%;
+    background: var(--accent);
+    border: 1px solid #0d2750;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    color: var(--text);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus { border-color: #3a9bd5; }
+
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+
+  .volume-group label { margin-top: 0; }
+
+  .btn {
+    display: inline-block;
+    margin-top: 1.2rem;
+    padding: 0.6rem 1.4rem;
+    background: #3a9bd5;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #2980b9; }
+
+  .toast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    background: var(--green); color: #fff;
+    padding: 0.7rem 1.2rem; border-radius: 8px;
+    font-size: 0.9rem; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: var(--red); }
+
+  footer { color: var(--muted); font-size: 0.8rem; margin-top: 1rem; }
+</style>
+</head>
+<body>
+
+<h1>🚦 tglys</h1>
+<p class="subtitle">TG Traffic Light Volume Control</p>
+
+<div class="card">
+  <h2>Current Status</h2>
+  <div class="light-row">
+    <div class="bulb" id="bulb"></div>
+    <div class="state-info">
+      <span class="state-label" id="stateLabel">—</span>
+      <span id="stateError" class="state-error"></span>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Configuration</h2>
+  <form id="configForm">
+    <label for="url">Traffic Light API URL</label>
+    <input type="url" id="url" name="url" placeholder="https://example.com/api/trafikklys" autocomplete="off">
+
+    <label for="poll_interval">Poll Interval (seconds)</label>
+    <input type="number" id="poll_interval" name="poll_interval" min="1" max="3600">
+
+    <label>Volume per traffic-light state (%)</label>
+    <div class="row3">
+      <div class="volume-group">
+        <label for="red_volume" style="color:var(--red)">🔴 Red</label>
+        <input type="number" id="red_volume" name="red_volume" min="0" max="100">
+      </div>
+      <div class="volume-group">
+        <label for="yellow_volume" style="color:var(--yellow)">🟡 Yellow</label>
+        <input type="number" id="yellow_volume" name="yellow_volume" min="0" max="100">
+      </div>
+      <div class="volume-group">
+        <label for="green_volume" style="color:var(--green)">🟢 Green</label>
+        <input type="number" id="green_volume" name="green_volume" min="0" max="100">
+      </div>
+    </div>
+
+    <label for="admin_port">Admin Panel Port</label>
+    <input type="number" id="admin_port" name="admin_port" min="1" max="65535">
+
+    <button type="submit" class="btn">Save &amp; Apply</button>
+  </form>
+</div>
+
+<footer>Changes are saved to .env and applied immediately.</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+const bulb = document.getElementById('bulb');
+const stateLabel = document.getElementById('stateLabel');
+const stateError = document.getElementById('stateError');
+const toast = document.getElementById('toast');
+
+function showToast(msg, isError) {
+  toast.textContent = msg;
+  toast.className = 'toast' + (isError ? ' error' : '') + ' show';
+  setTimeout(() => toast.className = 'toast' + (isError ? ' error' : ''), 2500);
+}
+
+async function fetchStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+
+    // Update light bulb
+    bulb.className = 'bulb ' + (d.state || '');
+    stateLabel.textContent = d.state || 'unknown';
+    stateError.textContent = d.last_error || '';
+
+    // Populate form only once (when fields are empty)
+    if (!document.getElementById('url').dataset.loaded) {
+      document.getElementById('url').value = d.url || '';
+      document.getElementById('poll_interval').value = d.poll_interval;
+      document.getElementById('red_volume').value = d.red_volume;
+      document.getElementById('yellow_volume').value = d.yellow_volume;
+      document.getElementById('green_volume').value = d.green_volume;
+      document.getElementById('admin_port').value = d.admin_port;
+      document.getElementById('url').dataset.loaded = '1';
+    }
+  } catch(e) {
+    stateError.textContent = 'Could not reach API: ' + e.message;
+  }
+}
+
+document.getElementById('configForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  try {
+    const r = await fetch('/api/config', { method: 'POST', body: new URLSearchParams(fd) });
+    const d = await r.json();
+    if (d.ok) {
+      showToast('✓ Config saved!', false);
+      // Reload form values from server after save
+      document.getElementById('url').dataset.loaded = '';
+      fetchStatus();
+    } else {
+      showToast('Error saving config', true);
+    }
+  } catch(e) {
+    showToast('Network error: ' + e.message, true);
+  }
+});
+
+// Poll status every 5 seconds.
+fetchStatus();
+setInterval(fetchStatus, 5000);
+</script>
+</body>
+</html>
