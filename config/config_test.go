@@ -32,9 +32,6 @@ func TestDefault(t *testing.T) {
 	if cfg.PollInterval != 30 {
 		t.Errorf("default poll = %d, want 30", cfg.PollInterval)
 	}
-	if cfg.AdminPort != 8765 {
-		t.Errorf("default port = %d, want 8765", cfg.AdminPort)
-	}
 }
 
 func TestLoadFromEnvVars(t *testing.T) {
@@ -44,7 +41,6 @@ func TestLoadFromEnvVars(t *testing.T) {
 	t.Setenv("TGLYS_RED_VOLUME", "5")
 	t.Setenv("TGLYS_YELLOW_VOLUME", "55")
 	t.Setenv("TGLYS_GREEN_VOLUME", "99")
-	t.Setenv("TGLYS_ADMIN_PORT", "9000")
 
 	cfg, err := Load()
 	if err != nil {
@@ -65,9 +61,6 @@ func TestLoadFromEnvVars(t *testing.T) {
 	}
 	if cfg.GreenVolume != 99 {
 		t.Errorf("GreenVolume = %d", cfg.GreenVolume)
-	}
-	if cfg.AdminPort != 9000 {
-		t.Errorf("AdminPort = %d", cfg.AdminPort)
 	}
 }
 
@@ -105,7 +98,6 @@ func TestSaveAndLoad(t *testing.T) {
 		RedVolume:    10,
 		YellowVolume: 60,
 		GreenVolume:  90,
-		AdminPort:    1234,
 	}
 
 	if err := Save(want); err != nil {
@@ -135,8 +127,5 @@ func TestSaveAndLoad(t *testing.T) {
 	}
 	if got.GreenVolume != want.GreenVolume {
 		t.Errorf("GreenVolume: got %d want %d", got.GreenVolume, want.GreenVolume)
-	}
-	if got.AdminPort != want.AdminPort {
-		t.Errorf("AdminPort: got %d want %d", got.AdminPort, want.AdminPort)
 	}
 }

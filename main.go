@@ -1,33 +1,29 @@
 // tglys — TG Traffic Light Volume Control
 //
-// A cross-platform background service that polls a remote endpoint for a
+// A cross-platform background application that polls a remote endpoint for a
 // traffic-light state ("red", "yellow", "green") and adjusts the system
 // master volume accordingly.
 //
-// Configuration is read from an .env file in the working directory, and can
-// also be updated at runtime via the built-in web admin panel.
+// The app runs with a native GUI: a system-tray icon shows the current state,
+// and the Settings window lets you view and edit all configuration values.
+//
+// Configuration is read from an .env file in the working directory and can
+// also be updated at runtime via the Settings window.
 //
 // Usage:
 //
-//	tglys [--admin-port PORT]
-//
-// The admin panel is served on http://localhost:<TGLYS_ADMIN_PORT> (default 8765).
-// Stop the process with Ctrl-C (SIGINT/SIGTERM).
+//	tglys
 package main
 
 import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"strconv"
 	"sync"
-	"syscall"
 
-	"github.com/VidarTessem/tglys/admin"
 	"github.com/VidarTessem/tglys/checker"
 	"github.com/VidarTessem/tglys/config"
+	"github.com/VidarTessem/tglys/gui"
 )
 
 func main() {
@@ -39,19 +35,9 @@ func main() {
 		log.Printf("warning: could not load .env: %v (using defaults)", err)
 	}
 
-	// Allow --admin-port flag override.
-	args := os.Args[1:]
-	for i, arg := range args {
-		if (arg == "--admin-port" || arg == "-admin-port") && i+1 < len(args) {
-			if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
-				cfg.AdminPort = n
-			}
-		}
-	}
-
 	log.Println("=== tglys — TG Traffic Light Volume Control ===")
 	if cfg.URL == "" {
-		log.Println("note: TGLYS_URL is not set — configure it via the admin panel or .env")
+		log.Println("note: TGLYS_URL is not set — configure it via the Settings window or .env")
 	} else {
 		log.Printf("polling URL : %s", cfg.URL)
 	}
@@ -81,21 +67,11 @@ func main() {
 		return nil
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
+	// Start background polling in a goroutine.
+	// The GUI (Fyne) takes over the main goroutine via gui.Run().
+	go ch.Run(context.Background())
 
-	// Start background polling.
-	go ch.Run(ctx)
-
-	// Start admin web panel.
-	addr := fmt.Sprintf(":%d", getCfg().AdminPort)
-	h := admin.Handler(ch, getCfg, setCfg)
-	go func() {
-		if err := admin.Serve(addr, h); err != nil {
-			log.Printf("[admin] server error: %v", err)
-		}
-	}()
-
-	<-ctx.Done()
-	log.Println("shutting down…")
+	// gui.Run blocks until the window is closed / Quit is selected.
+	gui.Run(ch, getCfg, setCfg)
 }
+

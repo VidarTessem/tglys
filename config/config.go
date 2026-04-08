@@ -25,8 +25,6 @@ type Config struct {
 	YellowVolume int
 	// GreenVolume is the system volume (0–100) to set when trafikklys == "green".
 	GreenVolume int
-	// AdminPort is the TCP port on which the web admin panel listens.
-	AdminPort int
 }
 
 // Default returns a Config pre-filled with sensible defaults.
@@ -37,7 +35,6 @@ func Default() Config {
 		RedVolume:    0,
 		YellowVolume: 50,
 		GreenVolume:  100,
-		AdminPort:    8765,
 	}
 }
 
@@ -74,11 +71,6 @@ func Load() (Config, error) {
 			cfg.GreenVolume = clamp(n, 0, 100)
 		}
 	}
-	if v := os.Getenv("TGLYS_ADMIN_PORT"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			cfg.AdminPort = n
-		}
-	}
 
 	return cfg, nil
 }
@@ -91,7 +83,6 @@ func Save(cfg Config) error {
 		fmt.Sprintf("TGLYS_RED_VOLUME=%d", cfg.RedVolume),
 		fmt.Sprintf("TGLYS_YELLOW_VOLUME=%d", cfg.YellowVolume),
 		fmt.Sprintf("TGLYS_GREEN_VOLUME=%d", cfg.GreenVolume),
-		fmt.Sprintf("TGLYS_ADMIN_PORT=%d", cfg.AdminPort),
 	}
 	content := strings.Join(lines, "\n") + "\n"
 	return os.WriteFile(defaultEnvFile, []byte(content), 0600)
