@@ -1,0 +1,16 @@
+# Build artifacts
+tglys
+tglys.exe
+
+# Local environment — never commit real credentials
+.env
+
+# Go module download cache
+vendor/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
